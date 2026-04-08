@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lär dig klockan!</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#FFF8F0;--card:#FFFFFF;
+  --hour:#E94560;--minute:#4361EE;--second:#2EC4B6;
+  --gold:#FFD166;--green:#06D6A0;--purple:#7B61FF;
+  --text:#2B2D42;--muted:#8D99AE;
+  --shadow:0 8px 32px rgba(43,45,66,.12);
+}
+html,body{height:100%;font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+
+/* ───── header ───── */
+.app-header{text-align:center;padding:20px 16px 8px}
+.app-header h1{font-family:'Fredoka',sans-serif;font-size:clamp(1.6rem,4vw,2.4rem);color:var(--hour);display:flex;align-items:center;justify-content:center;gap:10px}
+.app-header h1 .emoji{font-size:1.2em}
+
+/* ───── level bar ───── */
+.level-bar{display:flex;justify-content:center;gap:6px;padding:8px 16px;flex-wrap:wrap}
+.level-btn{
+  font-family:'Fredoka',sans-serif;font-size:.85rem;font-weight:600;
+  border:none;border-radius:20px;padding:6px 16px;cursor:pointer;
+  transition:all .25s;position:relative;
+}
+.level-btn.locked{background:#E8E8E8;color:#BBB;cursor:not-allowed}
+.level-btn.unlocked{background:#E0F7FA;color:#00838F}
+.level-btn.active{background:var(--purple);color:#fff;transform:scale(1.08);box-shadow:0 4px 14px rgba(123,97,255,.35)}
+.level-btn .lock-icon{font-size:.7em;margin-left:2px}
+
+/* ───── stats ───── */
+.stats-row{display:flex;justify-content:center;gap:20px;padding:4px 16px 10px;font-weight:700;font-size:.95rem}
+.stat{display:flex;align-items:center;gap:5px}
+.stat .emoji{font-size:1.1em}
+.streak-fire{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+/* ───── main layout ───── */
+.main{display:flex;flex-direction:column;align-items:center;gap:16px;padding:0 16px 20px}
+
+/* ───── clock ───── */
+.clock-wrap{position:relative;width:min(320px,80vw);height:min(320px,80vw)}
+.clock-svg{width:100%;height:100%;filter:drop-shadow(0 6px 20px rgba(0,0,0,.1))}
+
+/* ───── clock legend ───── */
+.clock-legend{display:flex;justify-content:center;gap:20px;font-family:'Nunito',sans-serif;font-size:.85rem;color:var(--muted);font-weight:700;margin-top:-4px}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-line{display:inline-block;width:18px;border-radius:3px}
+
+/* ───── answer area ───── */
+.answer-area{
+  background:var(--card);border-radius:24px;padding:24px;width:min(420px,92vw);
+  box-shadow:var(--shadow);text-align:center;
+}
+.question{font-family:'Fredoka',sans-serif;font-size:1.25rem;margin-bottom:16px;min-height:2.4em;line-height:1.4}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt-btn{
+  font-family:'Fredoka',sans-serif;font-size:1.1rem;font-weight:600;
+  border:3px solid #E8E8E8;border-radius:16px;padding:14px 8px;
+  background:#fff;cursor:pointer;transition:all .2s;
+}
+.opt-btn:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:0 4px 12px rgba(123,97,255,.2)}
+.opt-btn:active{transform:scale(.97)}
+.opt-btn.correct{background:#D4EDDA;border-color:var(--green);animation:pop .4s}
+.opt-btn.wrong{background:#FDDEDE;border-color:var(--hour);animation:shake .4s}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ───── mode tabs ───── */
+.mode-tabs{display:flex;gap:8px;justify-content:center;padding-bottom:4px}
+.mode-btn{
+  font-family:'Fredoka',sans-serif;font-size:.9rem;font-weight:600;
+  border:2px solid #E8E8E8;border-radius:14px;padding:8px 18px;
+  background:#fff;cursor:pointer;transition:all .2s;
+}
+.mode-btn.active{background:var(--gold);border-color:var(--gold);color:var(--text)}
+
+/* ───── explore panel ───── */
+.explore-panel{
+  background:var(--card);border-radius:24px;padding:24px;width:min(420px,92vw);
+  box-shadow:var(--shadow);text-align:center;
+}
+.time-display{font-family:'Fredoka',sans-serif;font-size:1.8rem;color:var(--purple);margin:8px 0}
+.slider-group{margin:12px 0}
+.slider-group label{font-weight:700;font-size:.9rem;display:block;margin-bottom:4px}
+.slider-group input[type=range]{width:100%;accent-color:var(--purple)}
+.tip-box{
+  background:linear-gradient(135deg,#FFF3E0,#FFF8E1);border-radius:14px;
+  padding:14px;margin-top:14px;font-size:.9rem;line-height:1.5;text-align:left;
+}
+.tip-box strong{color:var(--hour)}
+
+/* ───── feedback overlay ───── */
+.feedback{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  font-family:'Fredoka',sans-serif;font-size:2.2rem;font-weight:700;
+  padding:20px 40px;border-radius:20px;z-index:100;pointer-events:none;
+  opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);
+}
+.feedback.show{transform:translate(-50%,-50%) scale(1);opacity:1}
+.feedback.good{background:#D4EDDA;color:#155724}
+.feedback.bad{background:#FDDEDE;color:#721C24}
+
+/* ───── level-up overlay ───── */
+.level-up-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;
+  z-index:200;opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.level-up-overlay.show{opacity:1;pointer-events:auto}
+.level-up-card{
+  background:#fff;border-radius:28px;padding:36px;text-align:center;
+  max-width:340px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,.2);
+  transform:scale(.8);transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.level-up-overlay.show .level-up-card{transform:scale(1)}
+.level-up-card h2{font-family:'Fredoka',sans-serif;font-size:1.6rem;color:var(--purple);margin:10px 0}
+.level-up-card p{margin:8px 0;line-height:1.5}
+.level-up-card button{
+  font-family:'Fredoka',sans-serif;font-size:1.1rem;font-weight:700;
+  background:var(--purple);color:#fff;border:none;border-radius:16px;
+  padding:12px 32px;margin-top:16px;cursor:pointer;transition:transform .2s;
+}
+.level-up-card button:hover{transform:scale(1.05)}
+
+/* ───── confetti ───── */
+.confetti-piece{position:fixed;width:10px;height:10px;border-radius:2px;z-index:250;pointer-events:none;animation:confettiFall 1.5s forwards}
+@keyframes confettiFall{
+  0%{opacity:1;transform:translateY(0) rotate(0deg)}
+  100%{opacity:0;transform:translateY(100vh) rotate(720deg)}
+}
+
+/* ───── responsive ───── */
+@media(max-width:400px){
+  .clock-wrap{width:260px;height:260px}
+  .options{grid-template-columns:1fr 1fr}
+  .opt-btn{padding:10px 6px;font-size:1rem}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1><span class="emoji">⏰</span> Lär dig klockan! <span class="emoji">⭐</span></h1>
+</div>
+
+<div class="level-bar" id="levelBar"></div>
+<div class="stats-row">
+  <div class="stat"><span class="emoji">⭐</span><span id="starCount">0</span></div>
+  <div class="stat"><span class="emoji streak-fire" id="fireEmoji" style="visibility:hidden">🔥</span><span id="streakCount">0</span> i rad</div>
+  <div class="stat"><span class="emoji">🏆</span> Nivå <span id="currentLevelDisp">1</span></div>
+</div>
+
+<div class="main">
+  <div class="mode-tabs">
+    <button class="mode-btn active" onclick="setMode('quiz')">🎯 Quiz</button>
+    <button class="mode-btn" onclick="setMode('explore')">🔍 Utforska</button>
+  </div>
+
+  <div class="clock-wrap">
+    <svg class="clock-svg" viewBox="0 0 300 300" id="clockSvg"></svg>
+  </div>
+  <div class="clock-legend">
+    <span class="legend-item"><span class="legend-line" style="background:var(--hour);height:5px"></span> timme</span>
+    <span class="legend-item"><span class="legend-line" style="background:var(--minute);height:4px"></span> minut</span>
+  </div>
+
+  <!-- Quiz mode -->
+  <div class="answer-area" id="quizPanel">
+    <div class="question" id="question">Laddar...</div>
+    <div class="options" id="options"></div>
+  </div>
+
+  <!-- Explore mode -->
+  <div class="explore-panel" id="explorePanel" style="display:none">
+    <div class="time-display" id="exploreTime">12:00</div>
+    <div class="slider-group">
+      <label style="color:var(--hour)">⏱ Timme</label>
+      <input type="range" min="1" max="12" value="12" id="hourSlider" oninput="updateExplore()">
+    </div>
+    <div class="slider-group">
+      <label style="color:var(--minute)">⏱ Minut</label>
+      <input type="range" min="0" max="59" value="0" id="minuteSlider" oninput="updateExplore()">
+    </div>
+    <div class="tip-box" id="tipBox"></div>
+  </div>
+</div>
+
+<div class="feedback" id="feedback"></div>
+<div class="level-up-overlay" id="levelUpOverlay">
+  <div class="level-up-card">
+    <div style="font-size:3rem" id="levelUpEmoji">🎉</div>
+    <h2 id="levelUpTitle">Ny nivå!</h2>
+    <p id="levelUpText"></p>
+    <button onclick="closeLevelUp()">Kör vidare! 🚀</button>
+  </div>
+</div>
+
+<script>
+// ══════════ STATE ══════════
+const LEVELS = [
+  {name:"Hela timmar",    desc:"Lär dig vad timvisaren visar",        minutes:[0],           unlockStars:0},
+  {name:"Halva timmar",   desc:"Nu lär vi oss 'halv'",               minutes:[0,30],        unlockStars:8},
+  {name:"Kvart",          desc:"Kvart över och kvart i",              minutes:[0,15,30,45],  unlockStars:20},
+  {name:"Fem minuter",    desc:"Vi räknar i femminuters-steg",        minutes:[0,5,10,15,20,25,30,35,40,45,50,55], unlockStars:36},
+  {name:"Alla minuter",   desc:"Nu kan du hela klockan!",             minutes:null,          unlockStars:56},
+];
+
+let state = {level:0, stars:0, streak:0, bestStreak:0, mode:'quiz', targetH:0, targetM:0, correctAnswer:'', answered:false};
+
+// ══════════ CLOCK DRAWING ══════════
+function drawClock(h, m, svg){
+  const s = svg || document.getElementById('clockSvg');
+  const hourAngle = ((h % 12) + m / 60) * 30 - 90;
+  const minAngle  = m * 6 - 90;
+
+  // Number positions
+  const nums = Array.from({length:12},(_,i)=>{
+    const a=(i+1)*30-90; const r=115;
+    return `<text x="${150+r*Math.cos(a*Math.PI/180)}" y="${150+r*Math.sin(a*Math.PI/180)+6}" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="22" font-weight="700" fill="#2B2D42">${i+1}</text>`;
+  }).join('');
+
+  // Minute ticks
+  const ticks = Array.from({length:60},(_, i)=>{
+    const a=i*6-90; const major=i%5===0;
+    const r1=major?128:133; const r2=140;
+    return `<line x1="${150+r1*Math.cos(a*Math.PI/180)}" y1="${150+r1*Math.sin(a*Math.PI/180)}" x2="${150+r2*Math.cos(a*Math.PI/180)}" y2="${150+r2*Math.sin(a*Math.PI/180)}" stroke="${major?'#2B2D42':'#CCC'}" stroke-width="${major?2.5:1}" stroke-linecap="round"/>`;
+  }).join('');
+
+  // Colored minute dots for current level
+  const lvl = LEVELS[state.level];
+  const minuteDots = (lvl.minutes||[]).map(mi=>{
+    const a=mi*6-90; const r=133;
+    return `<circle cx="${150+r*Math.cos(a*Math.PI/180)}" cy="${150+r*Math.sin(a*Math.PI/180)}" r="4" fill="var(--minute)" opacity=".25"/>`;
+  }).join('');
+
+  s.innerHTML = `
+    <defs>
+      <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".15"/></filter>
+      <linearGradient id="faceGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="100%" stop-color="#F5F0FF"/>
+      </linearGradient>
+    </defs>
+    <!-- face -->
+    <circle cx="150" cy="150" r="145" fill="url(#faceGrad)" stroke="#E0D6F2" stroke-width="4" filter="url(#sh)"/>
+    ${ticks}${minuteDots}${nums}
+    <!-- minute hand (blue) -->
+    <line x1="150" y1="150"
+          x2="${150+100*Math.cos(minAngle*Math.PI/180)}"
+          y2="${150+100*Math.sin(minAngle*Math.PI/180)}"
+          stroke="var(--minute)" stroke-width="5" stroke-linecap="round"/>
+    <!-- hour hand (red) -->
+    <line x1="150" y1="150"
+          x2="${150+68*Math.cos(hourAngle*Math.PI/180)}"
+          y2="${150+68*Math.sin(hourAngle*Math.PI/180)}"
+          stroke="var(--hour)" stroke-width="7" stroke-linecap="round"/>
+    <!-- center -->
+    <circle cx="150" cy="150" r="7" fill="var(--purple)"/>
+
+  `;
+}
+
+// ══════════ TIME → TEXT ══════════
+function timeToText(h, m){
+  const hh = ((h-1)%12)+1;
+  const next = (hh%12)+1;
+  if(m===0)  return `${wordH(hh)}`;
+  if(m===5)  return `fem över ${wordH(hh)}`;
+  if(m===10) return `tio över ${wordH(hh)}`;
+  if(m===15) return `kvart över ${wordH(hh)}`;
+  if(m===20) return `tjugo över ${wordH(hh)}`;
+  if(m===25) return `fem i halv ${wordH(next)}`;
+  if(m===30) return `halv ${wordH(next)}`;
+  if(m===35) return `fem över halv ${wordH(next)}`;
+  if(m===40) return `tjugo i ${wordH(next)}`;
+  if(m===45) return `kvart i ${wordH(next)}`;
+  if(m===50) return `tio i ${wordH(next)}`;
+  if(m===55) return `fem i ${wordH(next)}`;
+  // non-standard minutes
+  if(m<30) return `${wordH(hh)} och ${m} minut${m>1?'er':''}`;
+  return `${60-m} minut${(60-m)>1?'er':''} i ${wordH(next)}`;
+}
+function wordH(n){return['','ett','två','tre','fyra','fem','sex','sju','åtta','nio','tio','elva','tolv'][n]}
+
+// ══════════ GENERATE QUESTION ══════════
+function generateQuestion(){
+  state.answered = false;
+  const lvl = LEVELS[state.level];
+  const h = Math.floor(Math.random()*12)+1;
+  let m;
+  if(lvl.minutes) m = lvl.minutes[Math.floor(Math.random()*lvl.minutes.length)];
+  else m = Math.floor(Math.random()*60);
+
+  state.targetH = h; state.targetM = m;
+  const correct = timeToText(h,m);
+  state.correctAnswer = correct;
+
+  drawClock(h, m);
+  document.getElementById('question').textContent = 'Vad är klockan? 🤔';
+
+  // Generate distractors — build pool of all possible times, pick 3 wrong ones
+  const alts = new Set([correct]);
+  const pool = [];
+  if(lvl.minutes){
+    for(let dh=1;dh<=12;dh++) for(const dm of lvl.minutes){
+      if(dh===h && dm===m) continue;
+      pool.push({h:dh,m:dm});
+    }
+  } else {
+    for(let i=0;i<40;i++){
+      const dh=Math.floor(Math.random()*12)+1;
+      const dm=Math.floor(Math.random()*60);
+      if(dh===h && dm===m) continue;
+      pool.push({h:dh,m:dm});
+    }
+  }
+  shuffle(pool);
+  for(const p of pool){
+    if(alts.size>=4) break;
+    alts.add(timeToText(p.h,p.m));
+  }
+  const arr = shuffle([...alts]);
+  const opts = document.getElementById('options');
+  opts.innerHTML = arr.map(a=>`<button class="opt-btn" onclick="answer(this,'${esc(a)}')">${a}</button>`).join('');
+}
+
+function esc(s){return s.replace(/'/g,"\\'")}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ══════════ ANSWER ══════════
+function answer(btn, val){
+  if(state.answered) return;
+  state.answered = true;
+  if(val === state.correctAnswer){
+    btn.classList.add('correct');
+    state.stars++;
+    state.streak++;
+    if(state.streak>state.bestStreak) state.bestStreak=state.streak;
+    showFeedback(true);
+    checkLevelUp();
+  } else {
+    btn.classList.add('wrong');
+    state.streak=0;
+    // Highlight the correct one
+    document.querySelectorAll('.opt-btn').forEach(b=>{
+      if(b.textContent===state.correctAnswer) b.classList.add('correct');
+    });
+    showFeedback(false);
+  }
+  updateStats();
+  setTimeout(generateQuestion, 1400);
+}
+
+// ══════════ FEEDBACK ══════════
+const PRAISE = ['Snyggt! 🌟','Rätt! ⭐','Perfekt! 💫','Woohoo! 🎉','Bra jobbat! 👏','Toppen! 🥇','Yes! ✨','Kanon! 💪'];
+const ENCOURAGE = ['Nästan! 💪','Försök igen! 🌈','Du lär dig! 📚','Snart där! 🚀'];
+function showFeedback(good){
+  const fb=document.getElementById('feedback');
+  fb.textContent = good ? PRAISE[Math.floor(Math.random()*PRAISE.length)] : ENCOURAGE[Math.floor(Math.random()*ENCOURAGE.length)];
+  fb.className = 'feedback '+(good?'good':'bad');
+  setTimeout(()=>fb.classList.add('show'),10);
+  setTimeout(()=>fb.classList.remove('show'),1100);
+}
+
+// ══════════ LEVEL ══════════
+function checkLevelUp(){
+  const nextLvl = state.level+1;
+  if(nextLvl<LEVELS.length && state.stars>=LEVELS[nextLvl].unlockStars){
+    state.level = nextLvl;
+    showLevelUp(nextLvl);
+  }
+}
+function showLevelUp(idx){
+  const ov=document.getElementById('levelUpOverlay');
+  document.getElementById('levelUpEmoji').textContent=['🎉','🌟','🏅','🚀','👑'][idx]||'🎉';
+  document.getElementById('levelUpTitle').textContent=`Nivå ${idx+1}: ${LEVELS[idx].name}!`;
+  document.getElementById('levelUpText').textContent=LEVELS[idx].desc;
+  ov.classList.add('show');
+  spawnConfetti();
+  renderLevelBar();
+}
+function closeLevelUp(){
+  document.getElementById('levelUpOverlay').classList.remove('show');
+  generateQuestion();
+}
+
+function renderLevelBar(){
+  const bar=document.getElementById('levelBar');
+  bar.innerHTML = LEVELS.map((l,i)=>{
+    const unlocked = state.stars>=l.unlockStars;
+    const active = i===state.level;
+    let cls = active?'active':unlocked?'unlocked':'locked';
+    return `<button class="level-btn ${cls}" ${unlocked&&!active?`onclick="switchLevel(${i})"`:''} ${!unlocked?'disabled':''}>${i+1}. ${l.name}${!unlocked?' 🔒':''}</button>`;
+  }).join('');
+}
+function switchLevel(i){state.level=i;renderLevelBar();generateQuestion();document.getElementById('currentLevelDisp').textContent=i+1;}
+
+function updateStats(){
+  document.getElementById('starCount').textContent=state.stars;
+  document.getElementById('streakCount').textContent=state.streak;
+  document.getElementById('currentLevelDisp').textContent=state.level+1;
+  document.getElementById('fireEmoji').style.visibility=state.streak>=3?'visible':'hidden';
+}
+
+// ══════════ EXPLORE MODE ══════════
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll('.mode-btn').forEach((b,i)=>b.classList.toggle('active',i===(m==='quiz'?0:1)));
+  document.getElementById('quizPanel').style.display   = m==='quiz'?'':'none';
+  document.getElementById('explorePanel').style.display = m==='explore'?'':'none';
+  if(m==='explore') updateExplore();
+  else generateQuestion();
+}
+function updateExplore(){
+  const h=+document.getElementById('hourSlider').value;
+  const m=+document.getElementById('minuteSlider').value;
+  drawClock(h,m);
+  const text = timeToText(h,m);
+  document.getElementById('exploreTime').textContent=`Klockan är ${text}`;
+  // Pedagogical tip
+  const tips = [];
+  tips.push(`<strong style="color:var(--hour)">Timvisaren</strong> (kort & röd) pekar på <strong>${h}</strong>.`);
+  if(m===0) tips.push('Minutvisaren pekar rakt upp — det är en hel timme!');
+  else if(m===30) tips.push('Minutvisaren pekar rakt ner — det är halv timme. Vi säger <strong>"halv"</strong> + nästa timme på svenska!');
+  else if(m===15) tips.push('Minutvisaren pekar på 3 — det är <strong>kvart över</strong>.');
+  else if(m===45) tips.push('Minutvisaren pekar på 9 — det är <strong>kvart i</strong> nästa timme.');
+  else tips.push(`<strong style="color:var(--minute)">Minutvisaren</strong> (lång & blå) pekar på ${m} minuter.`);
+  document.getElementById('tipBox').innerHTML = tips.join('<br>');
+}
+
+// ══════════ CONFETTI ══════════
+function spawnConfetti(){
+  const colors=['#E94560','#4361EE','#FFD166','#06D6A0','#7B61FF','#FF9F1C'];
+  for(let i=0;i<40;i++){
+    const c=document.createElement('div');
+    c.className='confetti-piece';
+    c.style.left=Math.random()*100+'vw';
+    c.style.top='-10px';
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDelay=Math.random()*.6+'s';
+    c.style.width=(6+Math.random()*8)+'px';
+    c.style.height=(6+Math.random()*8)+'px';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),2200);
+  }
+}
+
+// ══════════ INIT ══════════
+renderLevelBar();
+updateStats();
+generateQuestion();
+</script>
+</body>
+</html>
